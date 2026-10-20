@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  role         String   @default("WISATAWAN") // "WISATAWAN" | "PETUGAS" | "ADMIN"
+  password     String   @default("password123")
+  siteId       String?  // Destinasi penugasan untuk PETUGAS
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders             Order[]
+  assignedSite       TourismSite?         @relation("SiteStaff", fields: [siteId], references: [id])
+  validationAttempts ValidationAttempt[]
+  visits             Visit[]
+  auditLogs          AuditLog[]
+}
+
+model TourismSite {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  description   String
+  address       String
+  category      String   @default("Pantai") // "Pantai" | "Alam" | "Budaya" | "Keluarga"
+  openingHours  String   @default("08:00 - 17:00 WIB")
+  imageUrl      String
+  facilities    String   // JSON string array e.g. ["Parkir Luas","Toilet","Mushola","Kantin"]
+  status        String   @default("BUKA") // "BUKA" | "TUTUP"
+  manager       String   @default("Dinas Pariwisata Lampung Selatan")
+  salesVerified Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ticketTypes        TicketType[]
+  staffMembers       User[]              @relation("SiteStaff")
+  orders             Order[]
+  tickets            Ticket[]
+  validationAttempts ValidationAttempt[]
+  visits             Visit[]
+}
+
+model TicketType {
+  id              String   @id @default(uuid())
+  siteId          String
+  name            String   // misal "Tiket Dewasa", "Tiket Anak-anak", "Tiket Pelajar"
+  visitorCategory String   // "DEWASA" | "ANAK" | "PELAJAR"
+  priceIdr        Int
+  status          String   @default("ACTIVE")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  site           TourismSite     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  tariffVersions TariffVersion[]
+  orderItems     OrderItem[]
+}
+
+model TariffVersion {
+  id             String   @id @default(uuid())
+  ticketTypeId   String
+  amountIdr     Int
+  validFrom      DateTime @default(now())
+  legalReference String   @default("Perda Kabupaten Lampung Selatan No. 1 Tahun 2024")
+  approvedBy     String   @default("Kepala BAPENDA Lampung Selatan")
+  createdAt      DateTime @default(now())
+
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id               String   @id @default(uuid())
+  orderNumber      String   @unique // e.g. "SWT-20261020-001"
+  userId           String?
+  siteId           String
+  customerName     String
+  customerPhone    String
+  customerEmail    String
+  visitDate        String   // YYYY-MM-DD
+  subtotalIdr      Int
+  feeIdr           Int      @default(2000)
+  totalIdr         Int
+  status           String   @default("MENUNGGU_PEMBAYARAN") // "MENUNGGU_PEMBAYARAN" | "DIBAYAR" | "KEDALUWARSA" | "GAGAL"
+  paymentMethod    String   @default("QRIS") // "QRIS" | "EWALLET" | "VA"
+  paymentReference String?
+  paidAt           DateTime?
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user       User?        @relation(fields: [userId], references: [id])
+  site       TourismSite  @relation(fields: [siteId], references: [id])
+  orderItems OrderItem[]
+  tickets    Ticket[]
+}
+
+model OrderItem {
+  id              String   @id @default(uuid())
+  orderId         String
+  ticketTypeId    String
+  visitorCategory String
+  unitPriceIdr    Int
+  quantity        Int
+  subtotalIdr     Int
+
+  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+}
+
+model Ticket {
+  id                String    @id @default(uuid())
+  orderId           String
+  ticketCode        String    @unique // e.g. "SWT-TKT-20261020-AB12CD"
+  tokenSecret       String    @unique
+  siteId            String
+  visitDate         String    // YYYY-MM-DD
+  visitorCategory   String    // "DEWASA" | "ANAK" | "PELAJAR"
+  priceIdr          Int
+  status            String    @default("AKTIF") // "AKTIF" | "SUDAH_DIGUNAKAN" | "KEDALUWARSA" | "DIBATALKAN"
+  issuedAt          DateTime  @default(now())
+  usedAt            DateTime?
+  usedAtSiteId      String?
+  validatedByUserId String?
+
+  order              Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  site               TourismSite         @relation(fields: [siteId], references: [id])
+  validationAttempts ValidationAttempt[]
+  visit              Visit?
+}
+
+model ValidationAttempt {
+  id                String   @id @default(uuid())
+  ticketId          String?
+  ticketCode        String
+  siteId            String
+  validatedByUserId String
+  result            String   // "VALID" | "SUDAH_DIGUNAKAN" | "KEDALUWARSA" | "SALAH_LOKASI" | "TIDAK_DIKENAL"
+  note              String?
+  scannedAt         DateTime @default(now())
+
+  ticket        Ticket?     @relation(fields: [ticketId], references: [id])
+  site          TourismSite @relation(fields: [siteId], references: [id])
+  validatedUser User        @relation(fields: [validatedByUserId], references: [id])
+}
+
+model Visit {
+  id                String   @id @default(uuid())
+  ticketId          String   @unique
+  siteId            String
+  validatedByUserId String
+  enteredAt         DateTime @default(now())
+
+  ticket        Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  site          TourismSite @relation(fields: [siteId], references: [id])
+  validatedUser User        @relation(fields: [validatedByUserId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  userName   String?
+  action     String   // e.g. "UPDATE_TARIFF", "CREATE_ORDER", "SCAN_TICKET", "TOGGLE_SITE_STATUS"
+  entityType String   // e.g. "ORDER", "TICKET", "TOURISM_SITE", "TARIFF"
+  entityId   String?
+  details    String   // Description or JSON summary
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
