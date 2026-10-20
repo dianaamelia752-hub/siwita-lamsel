@@ -143,7 +143,34 @@ export default function DestinationCatalog({ initialDestinations }: DestinationC
       </section>
 
       {/* Destination Grid */}
-      {filteredDestinations.length > 0 ? (
+      {initialDestinations.length === 0 ? (
+        <div className="bg-white rounded-2xl p-12 text-center border-2 border-dashed border-blue-200 space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 text-[#1F4E79] mx-auto flex items-center justify-center">
+            <Sparkles className="w-8 h-8" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold text-slate-800">Database Belum Memiliki Data</h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+              Koneksi database PostgreSQL Neon.tech Anda telah terhubung! Klik tombol di bawah untuk mengisi otomatis 5 destinasi wisata Lampung Selatan dan akun demo.
+            </p>
+          </div>
+          <button
+            onClick={async () => {
+              const res = await fetch('/api/seed');
+              const json = await res.json();
+              if (json.success || json.sitesCount) {
+                window.location.reload();
+              } else {
+                alert('Gagal memuat data: ' + (json.error || json.message));
+              }
+            }}
+            className="px-6 py-3 bg-[#1F4E79] hover:bg-[#163A5C] text-white text-xs font-bold rounded-xl shadow-md transition-all inline-flex items-center gap-2"
+          >
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span>Inisialisasi Data Demo (1-Click Seed)</span>
+          </button>
+        </div>
+      ) : filteredDestinations.length > 0 ? (
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredDestinations.map((dest) => (
             <div

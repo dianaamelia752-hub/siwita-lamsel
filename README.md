@@ -58,7 +58,8 @@
   - Sukses: `#2E7D32`
   - Peringatan: `#F9A825`
   - Bahaya: `#C62828`
-- **Database & ORM:** SQLite (`prisma/dev.db`) + [Prisma ORM](https://www.prisma.io/) (100% lokal, tanpa akun eksternal)
+- **Database & ORM:** PostgreSQL Serverless ([Neon.tech](https://neon.tech)) + [Prisma ORM](https://www.prisma.io/)
+- **Deployment Platform:** [Vercel](https://vercel.com) (Serverless Web Hosting)
 - **QR Code:** `qrcode` (penerbitan e-tiket) dan `html5-qrcode` (kamera scanner)
 - **Icons:** `lucide-react`
 - **Audio:** Web Audio API sintetis (tanpa file mp3 eksternal)
@@ -87,27 +88,47 @@ Aplikasi telah dilengkapi data awal (*seeder*) dengan 3 akun contoh dan fitur **
 
 ---
 
-## 6. Cara Instalasi & Menjalankan Lokal
+## 6. Panduan Deploy Online (Neon.tech & Vercel)
 
-### Prasyarat
-- Node.js versi 18+ atau 20+ (Node LTS)
-- npm versi 9+
+Aplikasi ini siap di-deploy online ke Vercel dengan database PostgreSQL serverless dari Neon.tech agar dapat diakses oleh publik/dosen:
+
+### 1. Buat Database PostgreSQL di Neon.tech (Gratis)
+1. Buka [neon.tech](https://neon.tech) lalu login dengan akun GitHub Anda.
+2. Klik **Create Project**, beri nama misal `siwita-lamsel-db`.
+3. Setelah dashboard terbuka, pada bagian **Connection Details**, salin **Connection string** (pastikan opsi *Pooled connection* aktif).
+4. Format URL: `postgresql://[user]:[password]@[host]-pooler.[region].aws.neon.tech/[dbname]?sslmode=require`.
+
+### 2. Hubungkan & Deploy di Vercel
+1. Buka [vercel.com](https://vercel.com) lalu login dengan akun GitHub Anda.
+2. Klik **Add New...** > **Project**.
+3. Cari repository `siwita-lamsel` milik Anda, lalu klik **Import**.
+4. Di bagian **Environment Variables**:
+   - **Key:** `DATABASE_URL`
+   - **Value:** *[Tempel URL connection string dari Neon.tech]*
+5. Klik **Deploy**. Vercel akan otomatis menjalankan `prisma generate` dan `next build`.
+
+### 3. Inisialisasi Tabel & Data Awal (1-Click Seed)
+Setelah deployment selesai dan link aplikasi aktif:
+- Buka link Vercel Anda di peramban (misal `https://siwita-lamsel.vercel.app`).
+- Jika database masih baru/kosong, akan muncul tombol **"Inisialisasi Data Demo (1-Click Seed)"**. Klik tombol tersebut sekali untuk otomatis membuat 5 destinasi, 3 akun demo, dan tiket awal.
+- Atau buka langsung URL: `https://siwita-lamsel.vercel.app/api/seed`.
+
+---
+
+## 7. Cara Menjalankan Lokal (Opsional)
 
 ### Langkah Menjalankan:
 ```bash
-# 1. Clone atau masuk ke direktori proyek
-cd c:\Users\ASUS\Downloads\siwita-lamsel
-
-# 2. Pasang dependensi
+# 1. Pasang dependensi
 npm install
 
-# 3. Sinkronisasi database SQLite
-npx prisma db push
+# 2. Buat file .env dan masukkan URL DATABASE_URL Neon Anda
+# (atau gunakan dev.db jika menggunakan SQLite)
 
-# 4. Muat data awal (5 Destinasi, 3 Akun, Dummy Transaksi)
-node prisma/seed.js
+# 3. Sinkronisasi struktur tabel & data awal
+npm run db:setup
 
-# 5. Jalankan server pengembangan
+# 4. Jalankan server pengembangan
 npm run dev
 ```
 
